@@ -42,9 +42,9 @@ section.on{display:block}
 .btn-primary{display:block;width:100%;padding:14px;background:var(--ac);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;margin-top:8px}
 .btn-primary:hover{background:var(--ac2)}
 .btn-primary:disabled{background:#c7d2fe;cursor:default}
-.status{font-size:13px;color:var(--sub);margin-top:10px;min-height:18px}
-.status.ok{color:#059669;font-weight:600}
-.status.err{color:#dc2626}
+.status{font-size:14px;color:var(--sub);margin-top:12px;min-height:20px;text-align:center;font-weight:500}
+.status.ok{color:#059669;font-weight:700;font-size:16px}
+.status.err{color:#dc2626;font-weight:700}
 .class-cards-wrap{display:flex;flex-direction:column;gap:12px;margin-bottom:8px}
 .class-card{background:#fafbff;border:1.5px solid var(--bdr);border-radius:10px;padding:16px}
 .cls-badge{display:inline-block;background:#ede9fe;color:var(--ac);font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
@@ -54,9 +54,10 @@ section.on{display:block}
 .cls-img-box img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;display:none}
 .cls-img-box input{position:absolute;inset:0;opacity:0;cursor:pointer}
 .cls-fields{flex:1;display:flex;flex-direction:column;gap:8px}
-.cls-fields input{border:1.5px solid var(--bdr);border-radius:8px;padding:8px 12px;font-size:14px;color:var(--txt);background:#fff;outline:none;width:100%;font-family:inherit;transition:border-color .15s}
-.cls-fields input:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
-.cls-fields input::placeholder{color:#d1d5db;font-size:13px}
+.cls-fields input,.cls-fields textarea{border:1.5px solid var(--bdr);border-radius:8px;padding:8px 12px;font-size:14px;color:var(--txt);background:#fff;outline:none;width:100%;font-family:inherit;transition:border-color .15s}
+.cls-fields input:focus,.cls-fields textarea:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
+.cls-fields input::placeholder,.cls-fields textarea::placeholder{color:#d1d5db;font-size:13px}
+.cls-fields textarea{resize:vertical;min-height:72px;line-height:1.5}
 </style>
 </head>
 <body>
@@ -92,15 +93,15 @@ section.on{display:block}
 <!-- Step 2 -->
 <section id="step2">
   <div class="card" style="margin-bottom:12px">
-    <p class="sec-title">앱 기본 정보</p>
-    <p class="sec-desc">갤러리 카드와 앱 첫 화면에 표시됩니다.</p>
+    <p class="sec-title">분류기 소개</p>
+    <p class="sec-desc">갤러리 카드와 첫 화면에 표시됩니다.</p>
     <div class="field">
       <label>앱 제목 *</label>
-      <input type="text" id="app-title" placeholder="예: 강아지 vs 고양이 분류기">
+      <input type="text" id="app-title" placeholder="">
     </div>
     <div class="field">
       <label>소개 문구</label>
-      <input type="text" id="app-intro" placeholder="예: 사진을 찍으면 강아지인지 고양이인지 알려줘요!">
+      <input type="text" id="app-intro" placeholder="">
     </div>
     <div class="field">
       <label>썸네일 이미지</label>
@@ -228,11 +229,11 @@ function buildClassCards(classes) {
     fields.className = 'cls-fields';
     const titleInput = document.createElement('input');
     titleInput.type = 'text';
-    titleInput.placeholder = '결과 제목 (예: 고양이형)';
+    titleInput.placeholder = '결과 제목';
     titleInput.addEventListener('input', () => { templates[cls].title = titleInput.value; });
-    const descInput = document.createElement('input');
-    descInput.type = 'text';
-    descInput.placeholder = '결과 설명 (선택)';
+    const descInput = document.createElement('textarea');
+    descInput.placeholder = '결과 설명';
+    descInput.rows = 3;
     descInput.addEventListener('input', () => { templates[cls].desc = descInput.value; });
     fields.appendChild(titleInput);
     fields.appendChild(descInput);
@@ -299,8 +300,9 @@ async function publishApp() {
     return;
   }
   btn.disabled = true;
+  btn.textContent = '⏳ 게시하는 중...';
   status.className = 'status';
-  status.textContent = '게시하는 중...';
+  status.textContent = '';
   try {
     const thumbnail = appThumbnailData ? await compressImage(appThumbnailData, 400) : null;
     const compressedTemplates = {};
@@ -321,13 +323,15 @@ async function publishApp() {
       templates: compressedTemplates,
       createdAt: firebase.firestore.FieldValue.serverTimestamp()
     });
+    btn.textContent = '✓ 게시 완료!';
     status.className = 'status ok';
-    status.textContent = '✓ 게시 완료! 갤러리로 이동합니다...';
+    status.textContent = '갤러리로 이동합니다...';
     setTimeout(() => { window.location.href = 'index.html'; }, 1200);
   } catch(e) {
+    btn.textContent = '🌐 갤러리에 게시하기';
+    btn.disabled = false;
     status.className = 'status err';
     status.textContent = '오류: ' + e.message;
-    btn.disabled = false;
   }
 }
 </script>
