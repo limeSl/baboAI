@@ -1,0 +1,188 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>분류 앱</title>
+<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2ff;min-height:100vh;display:flex;flex-direction:column;align-items:center;padding-bottom:60px}
+.view-header{width:100%;max-width:440px;display:flex;align-items:center;gap:10px;padding:16px 16px 0}
+.back-btn{color:#6366f1;font-size:14px;text-decoration:none;font-weight:600;flex-shrink:0}
+.header-title{font-size:14px;font-weight:700;color:#1e1e2e;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.screen{width:100%;max-width:440px;padding:16px;display:none}
+.screen.on{display:block}
+.card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(99,102,241,.12);padding:24px}
+#loading-msg{color:#818cf8;font-size:15px;text-align:center;padding:60px 0;font-weight:500}
+.app-thumb{width:100%;max-height:240px;object-fit:cover;border-radius:12px;display:block;margin-bottom:18px}
+.app-title-main{font-size:22px;font-weight:900;color:#1e1e2e;margin-bottom:8px;line-height:1.3}
+.app-intro-text{font-size:14px;color:#6b7280;line-height:1.7;margin-bottom:22px;white-space:pre-wrap}
+.big-btn{display:block;width:100%;padding:16px;font-size:17px;font-weight:700;font-family:inherit;border:none;background:#6366f1;color:#fff;border-radius:12px;cursor:pointer;margin-bottom:10px;transition:background .15s;-webkit-appearance:none;appearance:none}
+.big-btn:hover{background:#4f46e5}
+.big-btn:active{opacity:.85}
+.big-btn.sub{background:#818cf8}
+.big-btn.sub:hover{background:#6366f1}
+video{width:100%;border-radius:12px;display:block;margin-bottom:12px}
+.cancel-btn{display:block;width:100%;padding:12px;background:transparent;border:1.5px solid #e5e7eb;border-radius:10px;font-size:14px;font-weight:600;color:#6b7280;cursor:pointer;font-family:inherit;transition:border-color .15s}
+.cancel-btn:hover{border-color:#6366f1;color:#6366f1}
+#preview{width:100%;border-radius:12px;display:block;margin-bottom:12px}
+.hint{font-size:14px;color:#818cf8;text-align:center;font-weight:500;padding:8px 0}
+.result-wrap{text-align:center}
+#result-img{width:160px;height:160px;object-fit:cover;border-radius:16px;display:none;margin:0 auto 20px;box-shadow:0 4px 16px rgba(0,0,0,.1)}
+#result-title{font-size:28px;font-weight:900;color:#1e1e2e;margin-bottom:10px;line-height:1.3}
+#result-desc{font-size:14px;color:#6b7280;line-height:1.8;margin-bottom:24px;white-space:pre-wrap}
+.retry-btn{padding:12px 32px;border:2px solid #e0e7ff;background:#fff;color:#6366f1;border-radius:10px;cursor:pointer;font-size:15px;font-weight:700;font-family:inherit;transition:all .15s}
+.retry-btn:hover{background:#ede9fe}
+</style>
+</head>
+<body>
+<div class="view-header">
+  <a href="index.html" class="back-btn">← 갤러리</a>
+  <span class="header-title" id="header-title"></span>
+</div>
+
+<div id="s-loading" class="screen on">
+  <div class="card"><p id="loading-msg">⏳ 앱 불러오는 중...</p></div>
+</div>
+
+<div id="s-start" class="screen">
+  <div class="card">
+    <img id="start-thumb" class="app-thumb" src="" alt="" style="display:none">
+    <div class="app-title-main" id="start-title"></div>
+    <div class="app-intro-text" id="start-intro"></div>
+    <button class="big-btn" id="btn-cam">📷 사진 찍기</button>
+    <button class="big-btn sub" id="btn-file">🖼 사진 올리기</button>
+    <input type="file" id="file-in" accept="image/*" style="display:none">
+  </div>
+</div>
+
+<div id="s-camera" class="screen">
+  <div class="card">
+    <video id="video" autoplay playsinline muted></video>
+    <button class="big-btn" id="btn-snap">📸 찍기</button>
+    <button class="cancel-btn" id="btn-cam-cancel">취소</button>
+  </div>
+</div>
+
+<div id="s-working" class="screen">
+  <div class="card">
+    <img id="preview" src="" alt="">
+    <p class="hint">🤖 AI가 분류하는 중...</p>
+  </div>
+</div>
+
+<div id="s-result" class="screen">
+  <div class="card">
+    <div class="result-wrap">
+      <img id="result-img" src="" alt="">
+      <div id="result-title"></div>
+      <div id="result-desc"></div>
+      <button class="retry-btn" id="btn-retry">↩ 다시 하기</button>
+    </div>
+  </div>
+</div>
+
+<canvas id="canvas" style="display:none"></canvas>
+
+<script>
+let _model = null, _stream = null, _T = {};
+const params = new URLSearchParams(location.search);
+const appId = params.get('id');
+
+function show(id) {
+  ['s-loading','s-start','s-camera','s-working','s-result'].forEach(s => {
+    document.getElementById(s).classList.toggle('on', s === id);
+  });
+}
+
+async function init() {
+  if (!appId) {
+    document.getElementById('loading-msg').textContent = '앱 ID가 없어요.';
+    return;
+  }
+  try {
+    const snap = await db.collection('apps').doc(appId).get();
+    if (!snap.exists) throw new Error('앱을 찾을 수 없어요.');
+    const d = snap.data();
+    _T = d.templates || {};
+
+    const title = d.appTitle || '분류 앱';
+    document.title = title;
+    document.getElementById('header-title').textContent = title;
+    document.getElementById('start-title').textContent = title;
+    document.getElementById('start-intro').textContent = d.intro || '';
+
+    if (d.thumbnail) {
+      const img = document.getElementById('start-thumb');
+      img.src = d.thumbnail;
+      img.style.display = 'block';
+    }
+
+    const mUrl = d.modelUrl.endsWith('/') ? d.modelUrl : d.modelUrl + '/';
+    _model = await tmImage.load(mUrl + 'model.json', mUrl + 'metadata.json');
+    show('s-start');
+  } catch(e) {
+    document.getElementById('loading-msg').textContent = '오류: ' + e.message;
+  }
+}
+
+document.getElementById('btn-cam').onclick = async () => {
+  try {
+    _stream = await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
+    document.getElementById('video').srcObject = _stream;
+    show('s-camera');
+  } catch(e) { alert('카메라를 사용할 수 없습니다: ' + e.message); }
+};
+
+document.getElementById('btn-cam-cancel').onclick = () => {
+  if (_stream) { _stream.getTracks().forEach(t => t.stop()); _stream = null; }
+  show('s-start');
+};
+
+document.getElementById('btn-snap').onclick = () => {
+  const v = document.getElementById('video');
+  const c = document.getElementById('canvas');
+  c.width = v.videoWidth; c.height = v.videoHeight;
+  c.getContext('2d').drawImage(v, 0, 0);
+  if (_stream) { _stream.getTracks().forEach(t => t.stop()); _stream = null; }
+  classify(c.toDataURL('image/jpeg', 0.9));
+};
+
+document.getElementById('btn-file').onclick = () => document.getElementById('file-in').click();
+document.getElementById('file-in').onchange = e => {
+  const f = e.target.files[0]; if (!f) return;
+  const r = new FileReader();
+  r.onload = ev => classify(ev.target.result);
+  r.readAsDataURL(f);
+  e.target.value = '';
+};
+
+async function classify(dataUrl) {
+  document.getElementById('preview').src = dataUrl;
+  show('s-working');
+  const img = new Image();
+  img.onload = async () => {
+    const preds = await _model.predict(img);
+    const top = preds.sort((a, b) => b.probability - a.probability)[0];
+    const t = _T[top.className] || {};
+    const ri = document.getElementById('result-img');
+    if (t.imageData) { ri.src = t.imageData; ri.style.display = 'block'; }
+    else { ri.style.display = 'none'; }
+    document.getElementById('result-title').textContent = t.title || top.className;
+    document.getElementById('result-desc').textContent = t.desc || '';
+    show('s-result');
+  };
+  img.src = dataUrl;
+}
+
+document.getElementById('btn-retry').onclick = () => show('s-start');
+
+init();
+</script>
+</body>
+</html>

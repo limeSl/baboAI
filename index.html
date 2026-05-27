@@ -3,474 +3,102 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>baboAI — 분류 앱 만들기</title>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"></script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"></script>
+<title>baboAI — AI 분류 앱 갤러리</title>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="firebase-config.js"></script>
 <style>
-:root{--ac:#6366f1;--ac2:#4f46e5;--bg:#f0f2ff;--card:#fff;--txt:#1e1e2e;--sub:#6b7280;--bdr:#e5e7eb;--r:14px;--sh:0 2px 20px rgba(99,102,241,.1)}
+:root{--ac:#6366f1;--ac2:#4f46e5;--bg:#f0f2ff;--card:#fff;--txt:#1e1e2e;--sub:#6b7280;--bdr:#e5e7eb;--r:14px}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);min-height:100vh;padding:36px 16px 80px;color:var(--txt)}
-.wrap{max-width:580px;margin:0 auto}
+body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);min-height:100vh;color:var(--txt)}
+.wrap{max-width:600px;margin:0 auto;padding:36px 16px 100px}
 .header{text-align:center;margin-bottom:32px}
 .logo{font-size:32px;font-weight:900;color:var(--ac);letter-spacing:-1px}
 .tagline{color:var(--sub);font-size:14px;margin-top:6px}
-/* Steps */
-.steps{display:flex;justify-content:center;align-items:center;gap:6px;margin-bottom:28px;flex-wrap:wrap}
-.si{padding:7px 16px;border-radius:999px;font-size:13px;color:var(--sub);background:var(--card);border:1.5px solid var(--bdr);transition:all .2s;white-space:nowrap}
-.si.active{background:var(--ac);color:#fff;border-color:var(--ac);font-weight:700}
-.si.done{border-color:var(--ac);color:var(--ac)}
-.arrow{color:var(--bdr);font-size:14px}
-/* Card */
-.card{background:var(--card);border-radius:var(--r);box-shadow:var(--sh);padding:28px;margin-bottom:16px}
-section{display:none}
-section.on{display:block}
-.sec-title{font-size:16px;font-weight:700;margin-bottom:6px}
-.sec-desc{font-size:13px;color:var(--sub);margin-bottom:20px}
-/* File zone */
-.file-zone{border:2px dashed var(--bdr);border-radius:10px;padding:32px 20px;text-align:center;font-size:14px;color:var(--sub);cursor:pointer;position:relative;transition:all .2s;background:#fafbff}
-.file-zone:hover{border-color:var(--ac);background:#f3f4ff}
-.file-zone input{position:absolute;inset:0;opacity:0;cursor:pointer;width:100%;height:100%}
-.file-zone.filled{border-color:var(--ac);background:#f3f4ff;color:var(--txt)}
-.file-zone .fz-icon{font-size:28px;margin-bottom:8px}
-.file-zone small{display:block;margin-top:6px;color:#a5b4fc;font-size:12px}
-/* Divider */
-.or-divider{display:flex;align-items:center;gap:12px;margin:20px 0;color:#c4b5fd;font-size:13px}
-.or-divider::before,.or-divider::after{content:'';flex:1;height:1px;background:#ede9fe}
-/* Field */
-.field{margin-bottom:16px}
-.field label{display:block;font-size:12px;font-weight:600;color:var(--sub);margin-bottom:8px;text-transform:uppercase;letter-spacing:.5px}
-.field input{width:100%;border:1.5px solid var(--bdr);border-radius:8px;padding:10px 14px;font-size:15px;color:var(--txt);background:#fff;outline:none;font-family:inherit;transition:border-color .15s}
-.field input:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(99,102,241,.12)}
-.field input::placeholder{color:#d1d5db}
-/* Buttons */
-.btn-primary{display:block;width:100%;padding:14px;background:var(--ac);color:#fff;border:none;border-radius:10px;font-size:16px;font-weight:700;cursor:pointer;font-family:inherit;transition:background .15s;margin-top:8px}
-.btn-primary:hover{background:var(--ac2)}
-.btn-primary:disabled{background:#c7d2fe;cursor:default}
-.btn-secondary{display:inline-block;padding:10px 24px;border:1.5px solid var(--bdr);color:var(--txt);border-radius:8px;font-size:14px;cursor:pointer;background:#fff;font-family:inherit;transition:border-color .15s}
-.btn-secondary:hover{border-color:var(--ac);color:var(--ac)}
-/* Status */
-.status{font-size:13px;color:var(--sub);margin-top:10px;min-height:18px}
-.status.ok{color:#059669;font-weight:600}
-.status.err{color:#dc2626}
-/* Class cards */
-.class-cards-wrap{display:flex;flex-direction:column;gap:12px;margin-bottom:8px}
-.class-card{background:#fafbff;border:1.5px solid var(--bdr);border-radius:10px;padding:16px}
-.cls-badge{display:inline-block;background:#ede9fe;color:var(--ac);font-size:11px;font-weight:700;padding:3px 10px;border-radius:999px;margin-bottom:12px;text-transform:uppercase;letter-spacing:.5px}
-.cls-row{display:flex;gap:14px;align-items:flex-start}
-.cls-img-box{width:80px;height:80px;flex-shrink:0;border:2px dashed #c7d2fe;border-radius:10px;display:flex;flex-direction:column;align-items:center;justify-content:center;cursor:pointer;overflow:hidden;position:relative;font-size:10px;font-weight:600;color:#a5b4fc;text-align:center;gap:4px;background:#f5f3ff;transition:border-color .15s}
-.cls-img-box:hover{border-color:var(--ac)}
-.cls-img-box img{width:100%;height:100%;object-fit:cover;position:absolute;inset:0;display:none}
-.cls-img-box input{position:absolute;inset:0;opacity:0;cursor:pointer}
-.cls-fields{flex:1;display:flex;flex-direction:column;gap:8px}
-.cls-fields input{border:1.5px solid var(--bdr);border-radius:8px;padding:8px 12px;font-size:14px;color:var(--txt);background:#fff;outline:none;width:100%;font-family:inherit;transition:border-color .15s}
-.cls-fields input:focus{border-color:var(--ac);box-shadow:0 0 0 3px rgba(99,102,241,.1)}
-.cls-fields input::placeholder{color:#d1d5db;font-size:13px}
-/* Done */
-.done-box{text-align:center;padding:20px 0}
-.done-box .icon{font-size:56px;margin-bottom:16px}
-.done-box h2{font-size:22px;font-weight:800;margin-bottom:8px}
-.done-box p{color:var(--sub);font-size:14px;margin-bottom:28px;line-height:1.8}
+.grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
+@media(max-width:380px){.grid{grid-template-columns:1fr}}
+.app-card{background:var(--card);border-radius:var(--r);overflow:hidden;cursor:pointer;transition:transform .15s,box-shadow .15s;box-shadow:0 2px 16px rgba(99,102,241,.1)}
+.app-card:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(99,102,241,.2)}
+.card-thumb{width:100%;aspect-ratio:1;background:#ede9fe;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.card-thumb img{width:100%;height:100%;object-fit:cover}
+.no-thumb{font-size:44px}
+.card-body{padding:12px}
+.card-title{font-size:14px;font-weight:700;color:var(--txt);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-intro{font-size:12px;color:var(--sub);margin-bottom:8px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:36px}
+.card-meta{font-size:11px;color:#a5b4fc}
+.loading{text-align:center;padding:60px 0;color:var(--sub);font-size:14px}
+.empty{text-align:center;padding:60px 0;display:none}
+.empty-icon{font-size:52px;margin-bottom:16px}
+.empty p{color:var(--sub);font-size:14px;line-height:2.2}
+.fab{position:fixed;bottom:24px;left:50%;transform:translateX(-50%);background:var(--ac);color:#fff;border-radius:999px;padding:14px 28px;font-size:16px;font-weight:700;text-decoration:none;box-shadow:0 4px 20px rgba(99,102,241,.4);transition:background .15s;white-space:nowrap;z-index:100}
+.fab:hover{background:var(--ac2)}
+@media(min-width:560px){.fab{left:auto;right:24px;transform:none}}
 </style>
 </head>
 <body>
 <div class="wrap">
-
-<div class="header">
-  <div class="logo">baboAI</div>
-  <p class="tagline">티쳐블 머신으로 나만의 분류 앱 만들기</p>
-</div>
-
-<div class="steps">
-  <div class="si active" id="si-1">① 모델 불러오기</div>
-  <span class="arrow">›</span>
-  <div class="si" id="si-2">② 결과 편집</div>
-  <span class="arrow">›</span>
-  <div class="si" id="si-3">③ 완료</div>
-</div>
-
-<!-- Step 1 -->
-<section id="step1" class="on">
-  <div class="card">
-    <p class="sec-title">티쳐블 머신 모델 불러오기</p>
-    <p class="sec-desc">티쳐블 머신에서 내보낸 파일을 올리거나 공유 URL을 붙여넣으세요.</p>
-    <div class="file-zone" id="file-zone">
-      <input type="file" id="tm-files" multiple accept=".json,.bin">
-      <div class="fz-icon">📂</div>
-      <div id="file-zone-text">파일 선택 또는 끌어다 놓기<br><small>model.json · weights.bin · metadata.json</small></div>
-    </div>
-    <div class="or-divider">또는</div>
-    <div class="field">
-      <label>공유 URL</label>
-      <input type="url" id="tm-url" placeholder="https://teachablemachine.withgoogle.com/models/xxxxxxxx/">
-    </div>
-    <button class="btn-primary" id="load-btn" onclick="loadModel()">🚀 모델 불러오기</button>
-    <div class="status" id="load-status"></div>
+  <div class="header">
+    <div class="logo">baboAI</div>
+    <p class="tagline">이 또한 어연수의 은혜겠지요</p>
   </div>
-</section>
-
-<!-- Step 2 -->
-<section id="step2">
-  <div class="card">
-    <p class="sec-title">클래스별 결과 편집</p>
-    <p class="sec-desc">각 분류 결과에 보여줄 이미지와 텍스트를 입력하세요.</p>
-    <div class="class-cards-wrap" id="class-cards"></div>
+  <div id="loading" class="loading">⏳ 불러오는 중...</div>
+  <div id="empty" class="empty">
+    <div class="empty-icon">🤖</div>
+    <p>아직 게시된 앱이 없어요.<br>첫 번째가 되어보세요!</p>
   </div>
-  <button class="btn-primary" id="dl-btn" onclick="doDownload()">✅ 완료 — 앱 다운로드</button>
-  <div class="status" id="dl-status"></div>
-</section>
-
-<!-- Step 3 -->
-<section id="step3">
-  <div class="card">
-    <div class="done-box">
-      <div class="icon">🎉</div>
-      <h2>완성!</h2>
-      <p>app.html 파일이 다운로드됐어요.<br>파일을 브라우저로 열면 바로 사용할 수 있어요!</p>
-      <button class="btn-secondary" onclick="location.reload()">처음부터 다시</button>
-    </div>
-  </div>
-</section>
-
+  <div class="grid" id="grid"></div>
 </div>
-
+<a href="builder.html" class="fab">+ 새 앱 만들기</a>
 <script>
-let model = null;
-let modelSource = null;
-const templates = {};
-
-// File zone
-const tmFiles = document.getElementById('tm-files');
-const fileZone = document.getElementById('file-zone');
-const fileZoneText = document.getElementById('file-zone-text');
-tmFiles.addEventListener('change', () => {
-  const names = Array.from(tmFiles.files).map(f => f.name).join(', ');
-  if (names) {
-    fileZoneText.innerHTML = `<strong>${names}</strong>`;
-    fileZone.classList.add('filled');
-  }
-});
-
-// Load model
-async function loadModel() {
-  const btn = document.getElementById('load-btn');
-  const status = document.getElementById('load-status');
-  btn.disabled = true;
-  status.className = 'status';
-  status.textContent = '불러오는 중...';
-
-  try {
-    const files = Array.from(tmFiles.files);
-    const urlVal = document.getElementById('tm-url').value.trim();
-
-    if (files.length > 0) {
-      const modelJson = files.find(f => f.name === 'model.json');
-      const metadata = files.find(f => f.name === 'metadata.json');
-      const weights = files.filter(f => f.name.endsWith('.bin'));
-      if (!modelJson || !metadata || weights.length === 0) {
-        throw new Error('model.json, metadata.json, .bin 파일이 모두 있어야 합니다.');
-      }
-      model = await tmImage.loadFromFiles(modelJson, weights[0], metadata);
-      modelSource = {
-        type: 'files',
-        modelJson: await toBase64(modelJson),
-        weights: await Promise.all(weights.map(async w => ({ name: w.name, data: await toBase64(w) }))),
-        metadata: await toBase64(metadata)
-      };
-    } else if (urlVal) {
-      const url = urlVal.endsWith('/') ? urlVal : urlVal + '/';
-      model = await tmImage.load(url + 'model.json', url + 'metadata.json');
-      modelSource = { type: 'url', url };
-    } else {
-      throw new Error('파일을 선택하거나 URL을 입력하세요.');
-    }
-
-    const classes = model.getClassLabels();
-    classes.forEach(c => { templates[c] = { title: '', desc: '', imageData: null }; });
-    buildClassCards(classes);
-    goStep(2);
-    status.textContent = `✓ 모델 로드 완료 (${classes.length}개 클래스)`;
-  } catch (e) {
-    status.className = 'status err';
-    status.textContent = '오류: ' + e.message;
-    btn.disabled = false;
-  }
+function formatDate(ts) {
+  if (!ts) return '';
+  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  return `${d.getMonth()+1}월 ${d.getDate()}일`;
 }
 
-// Build class editor cards
-function buildClassCards(classes) {
-  const container = document.getElementById('class-cards');
-  container.innerHTML = '';
-  classes.forEach(cls => {
-    const card = document.createElement('div');
-    card.className = 'class-card';
+function esc(s) {
+  return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
 
-    const label = document.createElement('div');
-    label.className = 'cls-label';
-    label.innerHTML = `클래스: <strong>${cls}</strong>`;
+async function loadApps() {
+  try {
+    const snap = await db.collection('apps')
+      .orderBy('createdAt', 'desc')
+      .limit(50)
+      .get();
 
-    const row = document.createElement('div');
-    row.className = 'cls-row';
+    document.getElementById('loading').style.display = 'none';
 
-    const imgBox = document.createElement('div');
-    imgBox.className = 'cls-img-box';
+    if (snap.empty) {
+      document.getElementById('empty').style.display = 'block';
+      return;
+    }
 
-    const imgEl = document.createElement('img');
-    imgEl.alt = '';
-
-    const placeholder = document.createElement('span');
-    placeholder.textContent = '이미지\n추가';
-    placeholder.style.whiteSpace = 'pre';
-
-    const imgInput = document.createElement('input');
-    imgInput.type = 'file';
-    imgInput.accept = 'image/*';
-    imgInput.addEventListener('change', e => {
-      const file = e.target.files[0];
-      if (!file) return;
-      const reader = new FileReader();
-      reader.onload = ev => {
-        templates[cls].imageData = ev.target.result;
-        imgEl.src = ev.target.result;
-        imgEl.style.display = 'block';
-        placeholder.style.display = 'none';
-      };
-      reader.readAsDataURL(file);
+    const grid = document.getElementById('grid');
+    snap.forEach(doc => {
+      const d = doc.data();
+      const card = document.createElement('div');
+      card.className = 'app-card';
+      card.onclick = () => location.href = `view.html?id=${doc.id}`;
+      card.innerHTML = `
+        <div class="card-thumb">
+          ${d.thumbnail
+            ? `<img src="${d.thumbnail}" alt="">`
+            : `<div class="no-thumb">🤖</div>`}
+        </div>
+        <div class="card-body">
+          <div class="card-title">${esc(d.appTitle || '분류 앱')}</div>
+          <div class="card-intro">${esc(d.intro || '')}</div>
+          <div class="card-meta">by ${esc(d.author || '익명')} · ${formatDate(d.createdAt)} · ${d.classCount||0}개 클래스</div>
+        </div>`;
+      grid.appendChild(card);
     });
-
-    imgBox.appendChild(placeholder);
-    imgBox.appendChild(imgEl);
-    imgBox.appendChild(imgInput);
-
-    const fields = document.createElement('div');
-    fields.className = 'cls-fields';
-
-    const titleInput = document.createElement('input');
-    titleInput.type = 'text';
-    titleInput.placeholder = '결과 제목 (예: 고양이형)';
-    titleInput.addEventListener('input', () => { templates[cls].title = titleInput.value; });
-
-    const descInput = document.createElement('input');
-    descInput.type = 'text';
-    descInput.placeholder = '결과 설명 (선택)';
-    descInput.addEventListener('input', () => { templates[cls].desc = descInput.value; });
-
-    fields.appendChild(titleInput);
-    fields.appendChild(descInput);
-    row.appendChild(imgBox);
-    row.appendChild(fields);
-    card.appendChild(label);
-    card.appendChild(row);
-    container.appendChild(card);
-  });
-}
-
-// Step navigation
-function goStep(n) {
-  ['step1','step2','step3'].forEach((id, i) => {
-    document.getElementById(id).classList.toggle('on', i + 1 === n);
-  });
-  [1,2,3].forEach(i => {
-    const el = document.getElementById('si-' + i);
-    el.classList.remove('active','done');
-    if (i < n) el.classList.add('done');
-    else if (i === n) el.classList.add('active');
-  });
-}
-
-// Download
-async function doDownload() {
-  const btn = document.getElementById('dl-btn');
-  const status = document.getElementById('dl-status');
-  btn.disabled = true;
-  status.className = 'status';
-  status.textContent = 'HTML 생성 중...';
-  try {
-    const html = buildOutputHTML(modelSource, templates);
-    const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'app.html';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
-    goStep(3);
-  } catch (e) {
-    status.className = 'status err';
-    status.textContent = '오류: ' + e.message;
-    btn.disabled = false;
+  } catch(e) {
+    document.getElementById('loading').textContent = '오류: ' + e.message;
   }
 }
 
-// File to base64
-function toBase64(file) {
-  return new Promise((resolve, reject) => {
-    const r = new FileReader();
-    r.onload = e => resolve(e.target.result.split(',')[1]);
-    r.onerror = reject;
-    r.readAsDataURL(file);
-  });
-}
-
-// Build output HTML (student app)
-function buildOutputHTML(src, tmpl) {
-  const srcStr = JSON.stringify(src);
-  const tmplStr = JSON.stringify(tmpl);
-  return `<!DOCTYPE html>
-<html lang="ko">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
-<title>분류 앱</title>
-<script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@1.3.1/dist/tf.min.js"><\/script>
-<script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@0.8/dist/teachablemachine-image.min.js"><\/script>
-<style>
-*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
-body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:#f0f2ff;min-height:100vh;padding:32px 16px 60px;display:flex;flex-direction:column;align-items:center}
-.app-title{font-size:22px;font-weight:900;color:#6366f1;margin-bottom:24px;letter-spacing:-0.5px}
-.screen{width:100%;max-width:420px;display:none}
-.screen.on{display:block}
-.card{background:#fff;border-radius:16px;box-shadow:0 4px 24px rgba(99,102,241,.12);padding:28px}
-.big-btn{display:block;width:100%;padding:18px;font-size:18px;font-weight:700;font-family:inherit;border:none;background:#6366f1;color:#fff;border-radius:12px;cursor:pointer;margin-bottom:12px;transition:background .15s;-webkit-appearance:none;appearance:none}
-.big-btn:hover{background:#4f46e5}
-.big-btn:active{opacity:.85}
-.big-btn.sub{background:#818cf8}
-.big-btn.sub:hover{background:#6366f1}
-video{width:100%;border-radius:12px;display:block;margin-bottom:12px}
-#preview{width:100%;border-radius:12px;display:block;margin:0 auto 16px}
-.hint{font-size:14px;color:#818cf8;text-align:center;margin-top:8px;font-weight:500}
-.result-wrap{text-align:center}
-#result-img{width:160px;height:160px;object-fit:cover;border-radius:16px;display:none;margin:0 auto 20px;box-shadow:0 4px 16px rgba(0,0,0,.1)}
-#result-title{font-size:30px;font-weight:900;color:#1e1e2e;margin-bottom:12px;line-height:1.3}
-#result-desc{font-size:15px;color:#6b7280;line-height:1.8;margin-bottom:28px;white-space:pre-wrap}
-.retry-btn{padding:12px 32px;border:2px solid #e0e7ff;background:#fff;color:#6366f1;border-radius:10px;cursor:pointer;font-size:15px;font-weight:700;font-family:inherit;transition:all .15s}
-.retry-btn:hover{background:#ede9fe;border-color:#c7d2fe}
-#loading-msg{color:#818cf8;font-size:15px;text-align:center;padding:60px 0;font-weight:500}
-.snap-btn-row{display:flex;flex-direction:column;gap:0}
-</style>
-</head>
-<body>
-<div class="app-title">✨ 분류 앱</div>
-<div id="s-loading" class="screen on"><div class="card"><p id="loading-msg">⏳ AI 모델 불러오는 중...</p></div></div>
-<div id="s-start" class="screen">
-  <div class="card">
-    <button class="big-btn" id="btn-cam">📷 사진 찍기</button>
-    <button class="big-btn sub" id="btn-file">🖼 사진 올리기</button>
-    <input type="file" id="file-in" accept="image/*" style="display:none">
-  </div>
-</div>
-<div id="s-camera" class="screen">
-  <div class="card">
-    <video id="video" autoplay playsinline muted></video>
-    <button class="big-btn" id="btn-snap">📸 찍기</button>
-    <button class="retry-btn" id="btn-cam-cancel" style="display:block;width:100%;text-align:center;margin-top:8px">취소</button>
-  </div>
-</div>
-<div id="s-working" class="screen">
-  <div class="card">
-    <img id="preview" src="" alt="">
-    <p class="hint">🤖 AI가 분류하는 중...</p>
-  </div>
-</div>
-<div id="s-result" class="screen">
-  <div class="card">
-    <div class="result-wrap">
-      <img id="result-img" src="" alt="">
-      <div id="result-title"></div>
-      <div id="result-desc"></div>
-      <button class="retry-btn" id="btn-retry">↩ 다시 하기</button>
-    </div>
-  </div>
-</div>
-<canvas id="canvas" style="display:none"></canvas>
-<script>
-const _SRC=${srcStr};
-const _T=${tmplStr};
-let _model=null,_stream=null;
-
-function show(id){
-  ['s-loading','s-start','s-camera','s-working','s-result'].forEach(s=>{
-    document.getElementById(s).classList.toggle('on',s===id);
-  });
-}
-
-async function init(){
-  try{
-    if(_SRC.type==='url'){
-      _model=await tmImage.load(_SRC.url+'model.json',_SRC.url+'metadata.json');
-    }else{
-      function b2f(b,n,t){
-        const s=atob(b),ab=new ArrayBuffer(s.length),ia=new Uint8Array(ab);
-        for(let i=0;i<s.length;i++)ia[i]=s.charCodeAt(i);
-        return new File([ab],n,{type:t});
-      }
-      const mj=b2f(_SRC.modelJson,'model.json','application/json');
-      const wf=_SRC.weights.map(w=>b2f(w.data,w.name,'application/octet-stream'));
-      const mt=b2f(_SRC.metadata,'metadata.json','application/json');
-      _model=await tmImage.loadFromFiles(mj,wf[0],mt);
-    }
-    show('s-start');
-  }catch(e){
-    document.getElementById('loading-msg').textContent='모델 로드 실패: '+e.message;
-  }
-}
-
-document.getElementById('btn-cam').onclick=async()=>{
-  try{
-    _stream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'},audio:false});
-    document.getElementById('video').srcObject=_stream;
-    show('s-camera');
-  }catch(e){alert('카메라를 사용할 수 없습니다: '+e.message);}
-};
-
-document.getElementById('btn-cam-cancel').onclick=()=>{
-  if(_stream){_stream.getTracks().forEach(t=>t.stop());_stream=null;}
-  show('s-start');
-};
-
-document.getElementById('btn-snap').onclick=()=>{
-  const v=document.getElementById('video');
-  const c=document.getElementById('canvas');
-  c.width=v.videoWidth;c.height=v.videoHeight;
-  c.getContext('2d').drawImage(v,0,0);
-  if(_stream){_stream.getTracks().forEach(t=>t.stop());_stream=null;}
-  classify(c.toDataURL('image/jpeg',0.9));
-};
-
-document.getElementById('btn-file').onclick=()=>document.getElementById('file-in').click();
-document.getElementById('file-in').onchange=e=>{
-  const f=e.target.files[0];if(!f)return;
-  const r=new FileReader();
-  r.onload=ev=>classify(ev.target.result);
-  r.readAsDataURL(f);
-  e.target.value='';
-};
-
-async function classify(dataUrl){
-  document.getElementById('preview').src=dataUrl;
-  show('s-working');
-  const img=new Image();
-  img.onload=async()=>{
-    const preds=await _model.predict(img);
-    const top=preds.sort((a,b)=>b.probability-a.probability)[0];
-    const t=_T[top.className]||{};
-    const ri=document.getElementById('result-img');
-    if(t.imageData){ri.src=t.imageData;ri.style.display='block';}
-    else{ri.style.display='none';}
-    document.getElementById('result-title').textContent=t.title||top.className;
-    document.getElementById('result-desc').textContent=t.desc||'';
-    show('s-result');
-  };
-  img.src=dataUrl;
-}
-
-document.getElementById('btn-retry').onclick=()=>show('s-start');
-init();
-<\/script>
-</body>
-</html>`;
-}
+loadApps();
 </script>
 </body>
 </html>
