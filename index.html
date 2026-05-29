@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>baboAI — AI 분류 앱 갤러리</title>
 <script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-app-compat.js"></script>
-<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore-compat.js"></script>
+<script src="https://www.gstatic.com/firebasejs/10.12.2/firebase-database-compat.js"></script>
 <script src="firebase-config.js"></script>
 <style>
 :root{--ac:#6366f1;--ac2:#4f46e5;--bg:#f0f2ff;--card:#fff;--txt:#1e1e2e;--sub:#6b7280;--bdr:#e5e7eb;--r:14px}
@@ -52,7 +52,7 @@ body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;backgrou
 <script>
 function formatDate(ts) {
   if (!ts) return '';
-  const d = ts.toDate ? ts.toDate() : new Date(ts);
+  const d = new Date(ts);
   return `${d.getMonth()+1}월 ${d.getDate()}일`;
 }
 
@@ -62,24 +62,23 @@ function esc(s) {
 
 async function loadApps() {
   try {
-    const snap = await db.collection('apps')
-      .orderBy('createdAt', 'desc')
-      .limit(50)
-      .get();
+    const snap = await db.ref('apps').orderByChild('createdAt').limitToLast(50).get();
 
     document.getElementById('loading').style.display = 'none';
 
-    if (snap.empty) {
+    if (!snap.exists()) {
       document.getElementById('empty').style.display = 'block';
       return;
     }
 
+    const items = [];
+    snap.forEach(child => { items.unshift({ id: child.key, ...child.val() }); });
+
     const grid = document.getElementById('grid');
-    snap.forEach(doc => {
-      const d = doc.data();
+    items.forEach(d => {
       const card = document.createElement('div');
       card.className = 'app-card';
-      card.onclick = () => location.href = `view.html?id=${doc.id}`;
+      card.onclick = () => location.href = `view.html?id=${d.id}`;
       card.innerHTML = `
         <div class="card-thumb">
           ${d.thumbnail
