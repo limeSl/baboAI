@@ -11,21 +11,23 @@
 :root{--ac:#6366f1;--ac2:#4f46e5;--bg:#f0f2ff;--card:#fff;--txt:#1e1e2e;--sub:#6b7280;--bdr:#e5e7eb;--r:14px}
 *,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
 body{font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',sans-serif;background:var(--bg);min-height:100vh;color:var(--txt)}
-.wrap{max-width:600px;margin:0 auto;padding:36px 16px 100px}
+.wrap{max-width:1200px;margin:0 auto;padding:36px 24px 100px}
 .header{text-align:center;margin-bottom:32px}
 .logo{font-size:32px;font-weight:900;color:var(--ac);letter-spacing:-1px}
 .tagline{color:var(--sub);font-size:14px;margin-top:6px}
 .grid{display:grid;grid-template-columns:repeat(2,1fr);gap:14px}
-@media(max-width:380px){.grid{grid-template-columns:1fr}}
+@media(max-width:480px){.grid{grid-template-columns:1fr}}
+@media(min-width:600px){.grid{grid-template-columns:repeat(3,1fr)}}
+@media(min-width:900px){.grid{grid-template-columns:repeat(4,1fr)}}
 .app-card{background:var(--card);border-radius:var(--r);overflow:hidden;cursor:pointer;transition:transform .15s,box-shadow .15s;box-shadow:0 2px 16px rgba(99,102,241,.1)}
 .app-card:hover{transform:translateY(-3px);box-shadow:0 8px 28px rgba(99,102,241,.2)}
-.card-thumb{width:100%;aspect-ratio:1;background:#ede9fe;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.card-thumb{width:100%;aspect-ratio:4/3;background:#ede9fe;display:flex;align-items:center;justify-content:center;overflow:hidden}
 .card-thumb img{width:100%;height:100%;object-fit:cover}
 .no-thumb{font-size:44px}
 .card-body{padding:12px}
-.card-title{font-size:14px;font-weight:700;color:var(--txt);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.card-intro{font-size:12px;color:var(--sub);margin-bottom:8px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:36px}
-.card-meta{font-size:11px;color:#a5b4fc}
+.card-title{font-size:17px;font-weight:700;color:var(--txt);margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.card-intro{font-size:14px;color:var(--sub);margin-bottom:8px;line-height:1.5;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden;min-height:36px}
+.card-meta{font-size:13px;color:#a5b4fc}
 .loading{text-align:center;padding:60px 0;color:var(--sub);font-size:14px}
 .empty{text-align:center;padding:60px 0;display:none}
 .empty-icon{font-size:52px;margin-bottom:16px}
@@ -60,7 +62,40 @@ function esc(s) {
   return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
+function loadMockApps() {
+  document.getElementById('loading').style.display = 'none';
+  const mockData = [
+    { appTitle:'강아지 vs 고양이', intro:'사진으로 강아지인지 고양이인지 구분해요', author:'김민준', createdAt: Date.now(), classCount:2 },
+    { appTitle:'과일 분류기', intro:'사과 바나나 포도를 찍으면 바로 알아내요', author:'이지은', createdAt: Date.now(), classCount:3 },
+    { appTitle:'감정 분류 AI', intro:'표정 사진으로 기쁨 슬픔 화남을 분류해요', author:'박서준', createdAt: Date.now(), classCount:3 },
+    { appTitle:'쓰레기 분류기', intro:'일반 재활용 음식물 분리수거 도우미예요', author:'최유나', createdAt: Date.now(), classCount:4 },
+    { appTitle:'손 모양 인식', intro:'카메라로 가위 바위 보를 인식해요', author:'정다혜', createdAt: Date.now(), classCount:3 },
+    { appTitle:'마스크 감지기', intro:'마스크를 쓰고 있는지 아닌지 확인해요', author:'윤지호', createdAt: Date.now(), classCount:2 },
+    { appTitle:'옷 색상 분류', intro:'옷 사진을 찍으면 색상을 알려줘요', author:'한소희', createdAt: Date.now(), classCount:5 },
+    { appTitle:'음식 분류 앱', intro:'급식 사진으로 음식 이름을 맞혀요', author:'오태양', createdAt: Date.now(), classCount:6 },
+    { appTitle:'날씨 분류기', intro:'하늘 사진으로 맑음 흐림 비를 구분해요', author:'임채원', createdAt: Date.now(), classCount:3 },
+    { appTitle:'동물 퀴즈 AI', intro:'동물 사진을 보여주면 이름을 맞혀요', author:'강나은', createdAt: Date.now(), classCount:5 },
+  ];
+  const grid = document.getElementById('grid');
+  mockData.forEach(d => {
+    const card = document.createElement('div');
+    card.className = 'app-card';
+    card.innerHTML = `
+      <div class="card-thumb"><div class="no-thumb">🤖</div></div>
+      <div class="card-body">
+        <div class="card-title">${esc(d.appTitle)}</div>
+        <div class="card-intro">${esc(d.intro)}</div>
+        <div class="card-meta">by ${esc(d.author)} · 5월 29일 · ${d.classCount}개 클래스</div>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+
 async function loadApps() {
+  if (new URLSearchParams(location.search).has('preview')) {
+    loadMockApps();
+    return;
+  }
   try {
     const snap = await db.ref('apps').orderByChild('createdAt').limitToLast(50).get();
 
